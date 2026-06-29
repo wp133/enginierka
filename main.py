@@ -11,16 +11,13 @@ import hashlib
 
 #########Setup############
 app = Flask(__name__)
-app.secret_key = 'tajny_klucz' #mongo pass gRfF5l6FlN0aZKgp for user a_user
+app.secret_key = ''
 app.config['UPLOAD_FOLDER'] = 'upload'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 app.permanent_session_lifetime = timedelta(minutes=15)
 
-users = {
-    'admin': 'root',
-    'user': 'password'
-}
+#users = 
 
 #Mongo setup
 uri = "mongodb+srv://a_user:gRfF5l6FlN0aZKgp@genomics.njtfiec.mongodb.net/?retryWrites=true&w=majority&appName=genomics"
@@ -30,12 +27,7 @@ mongo_db = mongo_client['gen_admins']
 mongo_users = mongo_db['admins']
 
 # MySQL setup
-db_config = {
-    'host': 'localhost',
-    'user': 'youser',
-    'password': 'haslo',
-    'database': 'genomics'
-}
+
 
 @app.before_request
 def make_session_permanent():
