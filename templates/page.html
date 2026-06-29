@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Wizualizacja danych</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 40px;
+      background: linear-gradient(135deg, #e0f7fa, #fff);
+      color: #333;
+      animation: fadeIn 1s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #00bcd4;
+    }
+
+    h1 {
+      font-size: 32px;
+      color: #00796b;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+
+    a.login-link {
+      text-decoration: none;
+      background-color: #00acc1;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-weight: bold;
+      box-shadow: 0 4px 8px rgba(0,172,193,0.3);
+      transition: background-color 0.3s ease, transform 0.2s;
+    }
+
+    a.login-link:hover {
+      background-color: #00838f;
+      transform: scale(1.05);
+    }
+
+    .login-link.logout-btn {
+      text-decoration: none;
+      background-color: #e57373;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-weight: bold;
+      box-shadow: 0 4px 8px rgba(0,172,193,0.3);
+      transition: background-color 0.3s ease, transform 0.2s;
+    }
+    .login-link.logout-btn:hover {
+      background-color: #c62828 !important;
+    }
+    section {
+      margin-bottom: 30px;
+    }
+
+    label {
+      font-size: 18px;
+      margin-right: 10px;
+    }
+
+    .view-toggle-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 24px 0;
+    }
+
+    .panel-btn {
+      border: none;
+      background: #00acc1;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+      font-weight: 600;
+    }
+
+    .panel-btn:hover,
+    .panel-btn.active {
+      background-color: #00838f;
+      transform: scale(1.02);
+    }
+
+    .view-panel {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .view-panel.active {
+      display: block;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    select {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #00bcd4;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: border 0.3s;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #0097a7;
+    }
+
+    .table-container {
+      margin-top: 30px;
+      padding: 25px;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      min-height: 200px;
+      transition: box-shadow 0.3s;
+    }
+
+    .table-container:hover {
+      box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+    }
+
+    footer {
+      margin-top: 60px;
+      font-size: 14px;
+      color: #555;
+      text-align: center;
+      opacity: 0.7;
+    }
+    a {
+        font-size: 20px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <header>
+  <h1>Wyświetlanie danych na temat genomów</h1>
+  {% if session.get('user') %}
+  <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
+    <button type="submit" class="login-link logout-btn">Wyloguj się</button>
+  </form>
+  {% else %}
+    <a href="{{ url_for('login') }}" class="login-link">Zaloguj się</a>
+  {% endif %}
+  </header>
+  
+
+  {% if session.get('user') %}
+
+  <form action="{{ url_for('owner_input') }}" method="post" style="margin: 30px 0;">
+    <label for="user-owner-input">Wpisz identyfikator obiektu:</label>
+    <input type="text" id="user-owner-input" name="user_new_id" required style="padding:8px; border-radius:6px; border:1px solid #00bcd4; margin-right:10px;">
+    <button type="submit" style="padding:8px 18px; border-radius:6px; background:#00acc1; color:white; border:none; font-weight:bold;">Dodaj</button>
+  </form>
+
+  <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" style="margin: 30px 0;">
+    <input type="file" name="csv_file" accept=".csv" required>
+    <button type="submit">Wyślij plik CSV</button>
+  </form>
+  {% endif %}
+
+
+  <section>
+    <label for="subspecies-select">Wybierz rekord:</label>
+    <select id="subspecies-select">
+      <option value="">Wszystkie</option>
+    </select>
+  </section>
+  <!-- <a> Porównaj z: </a> -->
+  <div class="view-toggle-bar">
+    <button type="button" id="btn-trait-comparison" class="panel-btn active" data-target="traitComparisonPanel">Porównanie cech</button>
+    <button type="button" id="btn-association-map" class="panel-btn" data-target="associationMapPanel">Mapa asocjacji</button>
+    <button type="button" id="btn-variations" class="panel-btn" data-target="variationsPanel">Wariacje</button>
+  </div>
+
+  <div id="traitComparisonPanel" class="view-panel active">
+    <section>
+      <label for="genome-table-select">Wybierz rekord do porównania:</label>
+      <select id="genome-table-select">
+        <option value="">Wszystkie</option>
+      </select>
+    </section>
+
+    <h3>Wykres danych z bazy:</h3>
+
+    <div style="text-align:left; margin-bottom:20px;">
+      <button onclick="switchChartType('line')" type="button" class="chart-type-btn" data-type="line">Liniowy</button>
+      <button onclick="switchChartType('bar')" type="button" class="chart-type-btn" data-type="bar">Bąbelkowy</button>
+      <button onclick="switchChartType('scatter')" type="button" class="chart-type-btn" data-type="scatter">Punktowy</button>
+    </div>
+
+    <div class="toolbar">
+      <label for="x-axis">Oś X:</label>
+      <select id="x-axis"></select>
+
+      <label for="y-axis">Oś Y:</label>
+      <select id="y-axis"></select>
+    </div>
+
+    <div style="max-width: 700px; margin: auto;">
+      <canvas id="myChart"></canvas>
+    </div>
+  </div>
+
+  <div id="associationMapPanel" class="view-panel">
+    <h3>Mapa asocjacji</h3>
+    <div style="max-width: 700px; margin: auto; height: 420px;">
+      <canvas id="associationChart"></canvas>
+    </div>
+  </div>
+
+  <div id="variationsPanel" class="view-panel">
+    <h3>Wariacje</h3>
+    <div style="max-width: 700px; margin: auto; height: 420px;">
+      <canvas id="variationChart"></canvas>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ url_for('static', filename='Chart.js') }}" id="chartTypeScript"></script>
+
+  <script>
+    const panelButtons = document.querySelectorAll('.panel-btn');
+    const panels = document.querySelectorAll('.view-panel');
+    let associationChart = null;
+    let variationChart = null;
+
+    function activatePanel(targetId) {
+      panels.forEach(panel => panel.classList.toggle('active', panel.id === targetId));
+      panelButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.target === targetId));
+
+      if (targetId === 'traitComparisonPanel') {
+        if (typeof loadData === 'function') {
+          loadData();
+        }
+      } else if (targetId === 'associationMapPanel') {
+        initAssociationChart();
+      } else if (targetId === 'variationsPanel') {
+        initVariationChart();
+      }
+    }
+
+    function initAssociationChart() {
+      if (associationChart) {
+        return;
+      }
+      const ctx = document.getElementById('associationChart').getContext('2d');
+      associationChart = new Chart(ctx, {
+        type: 'bubble',
+        data: {
+          datasets: [
+            {
+              label: 'Association map',
+              data: [
+                { x: 10, y: 8, r: 12 },
+                { x: 15, y: 5, r: 8 },
+                { x: 7, y: 12, r: 10 },
+                { x: 20, y: 10, r: 14 }
+              ],
+              backgroundColor: 'rgba(54, 162, 235, 0.6)',
+              borderColor: 'rgba(54, 162, 235, 1)'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Association map'
+            }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Trait A' }, beginAtZero: true },
+            y: { title: { display: true, text: 'Trait B' }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function initVariationChart() {
+      if (variationChart) {
+        return;
+      }
+      const ctx = document.getElementById('variationChart').getContext('2d');
+      variationChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Variant 1', 'Variant 2', 'Variant 3', 'Variant 4'],
+          datasets: [
+            {
+              label: 'Variant frequency',
+              data: [12, 9, 14, 7],
+              backgroundColor: ['#ff6384', '#36a2eb', '#ffcd56', '#4bc0c0']
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Variations'
+            }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    panelButtons.forEach(btn => {
+      btn.addEventListener('click', () => activatePanel(btn.dataset.target));
+    });
+  </script>
+
+  <div class="table-container" id="table-display">
+    <p>
+      Bardzo ważne dane, które są niezwykle ważne i o dużej ważności.
+    </p>
+     {% if session.get('user') %}
+    <p>Przed wyruszeniem w drogę należy zebrać drużynę, a przed dodaniem danych w pliku .csv, należy dodać ich właścicela. 
+    <br> Aby dane były wyświetlane poprawnie, należy najpierw dodać nazwę właściciela próbek genomu, a następnie umieścić na serwerze plik .csv z właściwymi danymi. Odwrotna kolejność spowoduje błąd serwera.
+    </p>
+    {% endif %}
+  </div>
+
+  <footer>
+    © 2026 Genomic Research App
+  </footer>
+
+</body>
+</html>
