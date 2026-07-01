@@ -1,119 +1,289 @@
-**Aplikacja do analizy danych genomowych**
+# Aplikacja do analizy danych genomowych
 
-Spis treści
-1.	Ogólny zarys projektu
-2.	Instrukcja użytkownika końcowego
-a.	Użytkownik bez praw administracyjnych
-b.	Użytkownik z prawami administracyjnymi
-3.	Dokumentacja techniczna
-a.	Bazy danych
-b.	Frontend
-c.	Backend
+## Spis treści
 
-1.	Ogólny zarys projektu
-Aplikacja służy do wizualizacji i porównywania danych dotyczących genomów różnych podgatunków za pomocą kilku typów wykresu: liniowego, punktowego i słupkowego. Dane dotyczące różnych genomów powinny być widoczne jednocześnie na jednej planszy wykresu co ułatwia analizę. 
-Interfejs umieszczony powyżej wykresu pozwala wybrać typ danych, którym użytkownik jest zainteresowany, a także które podgatunki chce porównać. Możliwe jest porównanie ze sobą naraz maksymalnie dwóch podgatunków.
-Ponadto, zalogowani użytkownicy mogą dodawać własne dane poprzez załadowanie ich przez stronę w formie pliku .csv. Zalogowani użytkownicy, ze względu na dużą autonomię w edycji zawartości wykresu, powinni być osobami autoryzowanymi i zaznajomionymi z projektem oraz badaniami genomowymi. W dalszej części opisu będą oni określani jako użytkownicy z prawami administracyjnymi lub admini.
-2.	Instrukcja użytkownika końcowego
+1. [Ogólny zarys projektu](#1-ogólny-zarys-projektu)
+2. [Instrukcja użytkownika końcowego](#2-instrukcja-użytkownika-końcowego)
+   - [2.1 Użytkownik bez praw administracyjnych](#21-użytkownik-bez-praw-administracyjnych)
+   - [2.2 Użytkownik z prawami administracyjnymi](#22-użytkownik-z-prawami-administracyjnymi)
+3. [Dokumentacja techniczna](#3-dokumentacja-techniczna)
+   - [3.1 Bazy danych](#31-bazy-danych)
+   - [3.2 Backend](#32-backend)
+   - [3.3 Frontend](#33-frontend)
 
-a)	Użytkownik bez praw administracyjnych
+---
 
-Zwykli użytkownicy mogą wyświetlać wizualizacje zasobów już istniejących w bazie danych, lecz nie mogą sami dodać żadnych nowych danych. Użytkownik niezalogowany może korzystać z interfejsu strony w następujący sposób:
-- wybrać z menu na górze strony interesujący go podgatunek/podgatunki; wybranie podwójnie tego samego gatunku wyświetli jeden wykres
-- wybrać interesujące go dane do wyświetlenia na osi X oraz Y. Do wyboru na osi X znajdują się wszystkie możliwe typy danych zawarte w bazie danych w tabeli genów (genes) poza haszem użytkownika, domyślnie są to:
-•	Symbol genu (gene_symbol),
-•	Część proteinowa (protein_role),
-•	Lokacja chromosomu (chromosomal_location),
-•	Koncentracja protein (protein concentration),
-•	Czystość protein (protein_purity),
-•	Podgatunki (subspecies)
-Z kolei dla osi Y, są to kategorie interpretowane jako dane liczbowe :
-•	Część proteinowa (protein_role),
-•	Lokacja chromosomu (chromosomal_location),
-•	Koncentracja protein (protein concentration),
-•	Czystość protein (protein_purity)
-Taki wybór jest spowodowany ograniczeniami wykresów udostępnionych na stronie. Żeby ograniczyć ryzyko błędów, dane o wartościach innych niż liczbowe, nie mogą być wyświetlane na osi Y.
-b)	Użytkownik z prawami administracyjnymi
+# 1. Ogólny zarys projektu
 
-Użytkownik z prawami administracyjnymi tzw. admin może zalogować się żeby samodzielnie dodać własne dane do bazy danych i wyświetlić je na wykresie.  Zalogować można się za pomocą przycisku Zaloguj się umieszczonego w prawej górnej części strony. Kliknięcie go spowoduje przekierowanie na podstronę przeznaczoną do logowania. 
-Domyślnie jedynym istniejącym loginem jest admin, a powiązanym hasłem root.
-Po zalogowaniu się, użytkownik zobaczy ukrytą wcześniej część interfejsu, oraz instrukcję na dole strony wyjaśniającą korzystanie z niego. Interfejs ów umożliwia dodanie nowego właściciela danych, obiektu badań z którego pobrano sample. Należy upewnić się, że właściciel zostaje dodany przez próbą umieszczenia należących do niego danych do bazy. Można to zrobić poprzez wpisanie nazwy nowego właściciela do odpowiedniego pola i kliknięcia przycisku „Dodaj”. Dane owe zostaną automatycznie zahaszowane po dodaniu do bazy. Następnie można dodać powiązane dane genomowe w formie pliku .csv. Służy do tego osobny przycisk na górze strony. Kluczowym jest, by dane były kompatybilne z pozostałymi danymi istniejącymi w bazie. Odpowiedzialność ta spoczywa na administratorze i dlatego tylko wybrane osoby powinny mieć prawo do logowania.
-Domyślny porządek danych to: 
-•	Symbol genu (gene_symbol),
-•	Hasz właściciela (owner_hashcode),
-•	Część proteinowa (protein_role),
-•	Lokacja chromosomu (chromosomal_location),
-•	Koncentracja protein (protein concentration),
-•	Czystość protein (protein_purity),
-•	Podgatunki (subspecies)
-Warto zwrócić uwagę, że wszystkie te dane, poza symbolem genu, haszem i podgatunkami to dane liczbowe. Wymienione zaś wcześniej to dane w formacie tekstowym (string).
-Użytkownik może wylogować się używając przycisku w prawym górnym rogu ekranu, lecz zostanie też automatycznie wylogowany po 15 minutach nieaktywności.
-3.	Dokumentacja techniczna
+Aplikacja służy do **wizualizacji i porównywania danych genomowych** różnych podgatunków za pomocą kilku typów wykresów:
 
-a.	Bazy danych
-Aplikacja korzysta z dwóch baz danych: jednej do przechowywania danych genomowych, druga do przechowywania loginu i hasła adminów.
-Ta pierwsza jest bazą stworzoną w języku SQL i korzysta z serwera MySQL.
-•	Tabela owners przechowuje właścicieli (hash + nazwa).
-•	Tabela genes przechowuje dane genomowe, powiązane z właścicielem i podgatunkiem.
+- liniowego,
+- punktowego,
+- słupkowego.
 
+Dane dotyczące różnych genomów mogą być wyświetlane jednocześnie na jednym wykresie, co ułatwia analizę i porównanie wyników.
 
-Druga jest bazą funkcjonującą w chmurze za pomocą systemu MongoDB. Domyślnie dostęp do bazy Mongo jest możliwy z każdego możliwego adresu IP. Kolekcja admins w bazie gen_admins przechowuje dane logowania użytkowników.
+Interfejs znajdujący się nad wykresem umożliwia użytkownikowi:
 
-b.	Backend
-Architektura i technologie
-•	Flask – główny framework webowy.
-•	MySQL – baza relacyjna przechowująca dane genomowe i właścicieli.
-•	MongoDB (Atlas) – baza dokumentowa do przechowywania danych logowania użytkowników.
-•	Pandas – do przetwarzania plików CSV.
-•	bcrypt – do bezpiecznego haszowania haseł.
-•	Session – do zarządzania sesją użytkownika i automatycznego wylogowania po 15 minutach braku aktywności.
-Główne endpointy
-•	/
-Strona główna aplikacji, renderuje szablon page.html.
-•	/login
-Obsługa logowania użytkownika (GET/POST). Sprawdza dane w MongoDB, ustawia sesję.
-•	/logout
-Wylogowanie użytkownika, usuwa dane z sesji.
-•	/register
-Rejestracja nowego użytkownika (MongoDB).
-•	upload
-Przyjmuje plik CSV, waliduje i zapisuje dane do tabeli genes w MySQL. Po przetworzeniu plik jest usuwany z serwera.
-•	/owner-input
-Dodaje nowego właściciela do tabeli owners w MySQL (z generowaniem hasza), po uprzednim sprawdzeniu czy taki właściciel już istnieje.
-•	/subspecies-list
-Zwraca listę unikalnych podgatunków z tabeli genes (JSON).
-•	/column-list-for-x, /column-list-for-y
-Zwracają listy kolumn z tabeli genes odpowiednio dla osi X i Y (JSON). Dla Y zwracane są tylko kolumny numeryczne.
-•	/chart-data
-Zwraca dane do wykresu na podstawie wybranych kolumn i podgatunków (JSON).
-Obsługa sesji i bezpieczeństwo
-•	Sesja użytkownika jest trwała przez 15 minut od ostatniej aktywności (app.permanent_session_lifetime).
-•	Dostęp do wybranych endpointów (np. upload, owner-input) wymaga zalogowania.
-•	Hasła użytkowników są przechowywane w MongoDB w postaci haszowanej (bcrypt).
-•	Przesyłane pliki CSV są walidowane pod kątem wymaganych kolumn.
-c. Frontend
-Panel logowania
-•	Strona logowania (login.html) posiada efekt "glassmorphism", nowoczesną kolorystykę oraz ikonę DNA.
-•	Po zalogowaniu użytkownik uzyskuje dostęp do funkcji związanych z zarządzaniem danymi.
-Główna strona aplikacji
-•	Nagłówek z nazwą aplikacji oraz dynamicznie wyświetlanymi przyciskami logowania/wylogowania (w zależności od statusu sesji).
-•	Formularze dostępne tylko dla zalogowanych użytkowników:
-o	Dodawanie nowego właściciela próbek (pole tekstowe + przycisk).
-o	Wysyłanie pliku .csv z danymi genomowymi.
-•	Sekcja wyboru podgatunków – dwa rozwijane menu pozwalają wybrać podgatunki do porównania na wykresie.
-•	Wybór typu wykresu – użytkownik może jednym kliknięciem przełączać się między wykresem liniowym, słupkowym, punktowym (scatter) oraz słupkowym.
-•	Toolbar do wyboru kolumn – rozwijane listy pozwalają wybrać kolumny z bazy danych, które będą prezentowane na osiach X i Y wykresu.
-•	Wizualizacja danych – wykres generowany jest dynamicznie w oparciu o wybrane parametry, z użyciem Chart.js. Wspierane są różne typy wykresów, a dane są pobierane asynchronicznie z backendu.
-•	Sekcja informacyjna – wyświetla wskazówki dotyczące poprawnego dodawania danych oraz obsługi aplikacji.
-•	Stopka z informacją o prawach autorskich.
-Wygląd i UX
-•	Całość utrzymana jest w jasnej, przyjaznej kolorystyce z delikatnymi animacjami i efektami cieniowania.
-•	Formularze i przyciski są zaokrąglone, czytelne i wygodne w obsłudze.
-•	Interfejs jest responsywny i dostosowany do różnych rozdzielczości ekranu.
-Obsługa zdarzeń i dynamiczność
-•	Wybór typu wykresu, kolumn oraz podgatunków powoduje natychmiastową aktualizację wykresu bez przeładowania strony.
-•	Wysyłka plików i formularzy odbywa się w sposób bezpieczny, z walidacją po stronie frontendu i backend.
+- wybór typu danych wyświetlanych na osiach,
+- wybór podgatunków do porównania.
 
-                             
+Jednocześnie można porównywać maksymalnie **dwa podgatunki**.
 
+Zalogowani użytkownicy mogą dodawać własne dane poprzez przesłanie pliku **CSV**. Ze względu na możliwość modyfikacji zawartości bazy danych funkcja ta jest dostępna wyłącznie dla użytkowników posiadających uprawnienia administracyjne.
 
+---
+
+# 2. Instrukcja użytkownika końcowego
+
+## 2.1 Użytkownik bez praw administracyjnych
+
+Niezalogowany użytkownik może przeglądać dane znajdujące się w bazie, jednak nie może dodawać nowych rekordów.
+
+### Dostępne funkcje
+
+- wybór jednego lub dwóch podgatunków do porównania,
+- wybór danych wyświetlanych na osiach wykresu,
+- zmiana typu wykresu.
+
+> Wybranie tego samego podgatunku dwukrotnie spowoduje wyświetlenie tylko jednego zestawu danych.
+
+### Dostępne kolumny dla osi X
+
+- Symbol genu (`gene_symbol`)
+- Część proteinowa (`protein_role`)
+- Lokalizacja chromosomu (`chromosomal_location`)
+- Koncentracja protein (`protein_concentration`)
+- Czystość protein (`protein_purity`)
+- Podgatunek (`subspecies`)
+
+### Dostępne kolumny dla osi Y
+
+Na osi Y mogą być prezentowane wyłącznie dane liczbowe:
+
+- Część proteinowa (`protein_role`)
+- Lokalizacja chromosomu (`chromosomal_location`)
+- Koncentracja protein (`protein_concentration`)
+- Czystość protein (`protein_purity`)
+
+Ograniczenie to wynika z wymagań wykresów wykorzystywanych przez aplikację.
+
+---
+
+## 2.2 Użytkownik z prawami administracyjnymi
+
+Administrator posiada wszystkie możliwości użytkownika standardowego oraz dodatkowo może:
+
+- logować się do systemu,
+- dodawać nowych właścicieli danych,
+- importować dane genomowe z plików CSV.
+
+### Logowanie
+
+Logowanie odbywa się za pomocą przycisku **„Zaloguj się”** znajdującego się w prawym górnym rogu strony.
+
+Domyślne dane logowania:
+
+| Login | Hasło |
+|-------|-------|
+| `admin` | `root` |
+
+### Dodawanie właściciela
+
+Przed importem danych należy dodać właściciela próbek.
+
+Procedura:
+
+1. wpisać nazwę właściciela,
+2. kliknąć **Dodaj**,
+3. aplikacja automatycznie wygeneruje hash właściciela i zapisze go w bazie danych.
+
+### Import danych
+
+Po dodaniu właściciela można przesłać plik **CSV** zawierający dane genomowe.
+
+Plik powinien zawierać kolumny w następującej kolejności:
+
+1. `gene_symbol`
+2. `owner_hashcode`
+3. `protein_role`
+4. `chromosomal_location`
+5. `protein_concentration`
+6. `protein_purity`
+7. `subspecies`
+
+### Typy danych
+
+**Tekstowe**
+
+- `gene_symbol`
+- `owner_hashcode`
+- `subspecies`
+
+**Numeryczne**
+
+- `protein_role`
+- `chromosomal_location`
+- `protein_concentration`
+- `protein_purity`
+
+Administrator odpowiada za poprawność i zgodność importowanych danych z istniejącą strukturą bazy.
+
+### Wylogowanie
+
+Administrator może:
+
+- wylogować się ręcznie,
+- zostać automatycznie wylogowany po **15 minutach bezczynności**.
+
+---
+
+# 3. Dokumentacja techniczna
+
+## 3.1 Bazy danych
+
+Aplikacja wykorzystuje dwie niezależne bazy danych.
+
+### Baza genomowa (MySQL)
+
+Relacyjna baza danych przechowująca dane genomowe.
+
+#### Tabela `owners`
+
+Przechowuje informacje o właścicielach próbek:
+
+- hash właściciela,
+- nazwa właściciela.
+
+#### Tabela `genes`
+
+Przechowuje:
+
+- dane genomowe,
+- powiązanie z właścicielem,
+- podgatunek.
+
+---
+
+### Baza administratorów (MongoDB Atlas)
+
+Baza dokumentowa przechowująca dane logowania administratorów.
+
+Domyślnie baza dostępna jest z dowolnego adresu IP.
+
+#### Baza
+
+`gen_admins`
+
+#### Kolekcja
+
+`admins`
+
+Przechowuje:
+
+- login,
+- zahaszowane hasło.
+
+---
+
+## 3.2 Backend
+
+### Technologie
+
+- Flask
+- MySQL
+- MongoDB Atlas
+- Pandas
+- bcrypt
+- Flask Session
+
+### Endpointy
+
+| Endpoint | Opis |
+|----------|------|
+| `/` | Strona główna aplikacji |
+| `/login` | Logowanie użytkownika |
+| `/logout` | Wylogowanie użytkownika |
+| `/register` | Rejestracja administratora |
+| `/upload` | Import pliku CSV |
+| `/owner-input` | Dodanie nowego właściciela |
+| `/subspecies-list` | Lista dostępnych podgatunków |
+| `/column-list-for-x` | Lista kolumn dla osi X |
+| `/column-list-for-y` | Lista kolumn dla osi Y |
+| `/chart-data` | Dane wykresu w formacie JSON |
+
+### Bezpieczeństwo
+
+- sesja wygasa po **15 minutach** nieaktywności,
+- wybrane endpointy wymagają zalogowania,
+- hasła przechowywane są jako hash (`bcrypt`),
+- pliki CSV są walidowane przed importem.
+
+---
+
+## 3.3 Frontend
+
+### Panel logowania
+
+Strona logowania (`login.html`) zawiera:
+
+- nowoczesny wygląd (glassmorphism),
+- ikonę DNA,
+- formularz logowania.
+
+Po zalogowaniu użytkownik uzyskuje dostęp do funkcji administracyjnych.
+
+---
+
+### Strona główna
+
+Interfejs zawiera:
+
+- nagłówek z nazwą aplikacji,
+- przyciski logowania i wylogowania,
+- formularz dodawania właściciela,
+- formularz przesyłania plików CSV,
+- wybór dwóch podgatunków,
+- wybór typu wykresu,
+- wybór kolumn dla osi X i Y,
+- dynamiczny wykres oparty o Chart.js,
+- sekcję pomocy,
+- stopkę z informacją o prawach autorskich.
+
+---
+
+### Typy wykresów
+
+Aplikacja obsługuje:
+
+- wykres liniowy,
+- wykres punktowy (scatter),
+- wykres słupkowy.
+
+---
+
+### Wygląd i UX
+
+Interfejs został zaprojektowany z naciskiem na:
+
+- responsywność,
+- prostotę obsługi,
+- nowoczesny wygląd,
+- czytelne formularze,
+- delikatne animacje.
+
+---
+
+### Dynamiczne działanie
+
+Aplikacja wykorzystuje komunikację asynchroniczną z backendem.
+
+Zmiana:
+
+- typu wykresu,
+- podgatunku,
+- kolumn,
+
+powoduje natychmiastowe odświeżenie wykresu bez przeładowania strony.
+
+Przesyłanie formularzy oraz plików CSV jest walidowane zarówno po stronie frontendu, jak i backendu.
