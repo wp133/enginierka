@@ -1,0 +1,7 @@
+Flask
+mysql-connector-python
+pandas
+pymongo
+bcrypt
+python-dotenv
+werkzeug
