@@ -8,26 +8,39 @@ from pymongo.server_api import ServerApi
 import bcrypt
 from datetime import datetime, timedelta
 import hashlib
+from dotenv import load_dotenv
 
 #########Setup############
+load_dotenv()
 app = Flask(__name__)
-app.secret_key = ''
-app.config['UPLOAD_FOLDER'] = 'upload'
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'tajny_klucz')
+app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'upload')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-app.permanent_session_lifetime = timedelta(minutes=15)
+app.permanent_session_lifetime = timedelta(minutes=int(os.getenv('SESSION_LIFETIME_MINUTES', '15')))
 
-#users = 
+#users = {
+#    'admin': 'root',
+#    'user': 'password'
+#}
 
 #Mongo setup
-uri = "mongodb+srv://a_user:gRfF5l6FlN0aZKgp@genomics.njtfiec.mongodb.net/?retryWrites=true&w=majority&appName=genomics"
-mongo_client = MongoClient(uri, server_api=ServerApi('1'))
+mongo_uri = os.getenv('MONGO_URI', 'mongodb+srv://a_user:gRfF5l6FlN0aZKgp@genomics.njtfiec.mongodb.net/?retryWrites=true&w=majority&appName=genomics')
+mongo_client = MongoClient(mongo_uri, server_api=ServerApi('1'))
 #mongo_client = MongoClient('mongodb://localhost:27017/')
-mongo_db = mongo_client['gen_admins']
-mongo_users = mongo_db['admins']
+mongo_db = mongo_client.get_database(os.getenv('MONGO_DB', 'gen_admins'))
+mongo_users = mongo_db.get_collection(os.getenv('MONGO_COLLECTION', 'admins'))
+
+
 
 # MySQL setup
 
+db_config = {
+    'host': os.getenv('MYSQL_HOST', 'localhost'),
+    'user': os.getenv('MYSQL_USER', 'youser'),
+    'password': os.getenv('MYSQL_PASSWORD', 'haslo'),
+    'database': os.getenv('MYSQL_DATABASE', 'genomics')
+}
 
 @app.before_request
 def make_session_permanent():
@@ -215,38 +228,90 @@ def owner_input():
 
     return redirect(url_for('home'))
 
-#Rejestracja endpoint
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password'].encode('utf-8')
-
-        if users.find_one({'username': username}):
-            return 'Użytkownik już istnieje.'
-
-        hashed = bcrypt.hashpw(password, bcrypt.gensalt())
-        users.insert_one({'username': username, 'password': hashed})
-        return redirect(url_for('login'))
-
-    return render_template('register.html')
-
 # Login endpoint
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        pepper = os.getenv('PASSWORD_PEPPER', '')
 
-        user = mongo_users.find_one({'username': username, 'password': password})
+        user = mongo_users.find_one({'username': username})
+        valid = False
         if user:
+            stored_pw = user.get('password')
+            if isinstance(stored_pw, str):
+                stored_pw = stored_pw.encode('utf-8')
+
+            try:
+                valid = bcrypt.checkpw(
+                    (password + pepper).encode('utf-8'),
+                    stored_pw
+                )
+            except (ValueError, TypeError):
+                # Stored password may still be plaintext or otherwise not a bcrypt hash.
+                if stored_pw in {
+                    password.encode('utf-8'),
+                    (password + pepper).encode('utf-8')
+                }:
+                    valid = True
+                    new_hash = bcrypt.hashpw(
+                        (password + pepper).encode('utf-8'),
+                        bcrypt.gensalt()
+                    )
+                    mongo_users.update_one(
+                        {'_id': user['_id']},
+                        {'$set': {'password': new_hash.decode('utf-8')}}
+                    )
+
+        if valid:
             session['user'] = username
             session.permanent = True
             return redirect(url_for('home'))
-        else:
-            flash("Błąd logowania: nieprawidłowa nazwa użytkownika lub hasło.", "error")
-            return redirect(url_for('login'))
+
+        flash("Błąd logowania: nieprawidłowa nazwa użytkownika lub hasło.", "error")
+        return redirect(url_for('login'))
+
     return render_template('login.html')
+
+
+#user = mongo_users.find_one({'username': 'admin'})
+#if user and bcrypt.checkpw((password + pepper).encode('utf-8'), user['password'].encode('utf-8')):
+#    session['user'] = 'admin'
+
+#Rejestracja endpoint
+#@app.route('/register', methods=['GET', 'POST'])
+#def register():
+#    if request.method == 'POST':
+#        username = request.form['username']
+#        password = request.form['password'].encode('utf-8')
+#
+#        if users.find_one({'username': username}):
+#            return 'Użytkownik już istnieje.'
+#
+#        hashed = bcrypt.hashpw(password, bcrypt.gensalt())
+#        users.insert_one({'username': username, 'password': hashed})
+#        return redirect(url_for('login'))
+#
+#    return render_template('register.html')
+
+
+
+#@app.route('/login', methods=['GET', 'POST'])
+#def login():
+#    if request.method == 'POST':
+#        username = request.form['username']
+#        password = request.form['password']
+#
+#        user = mongo_users.find_one({'username': username, 'password': password})
+#        if user:
+#            session['user'] = username
+#            session.permanent = True
+#            return redirect(url_for('home'))
+#        else:
+#            flash("Błąd logowania: nieprawidłowa nazwa użytkownika lub hasło.", "error")
+#            return redirect(url_for('login'))
+#    return render_template('login.html')
 
 # Logout endpoint
 @app.route('/logout')
